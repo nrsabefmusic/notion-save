@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>存入知識庫</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --border: #2e2e2e;
+    --accent: #d4a843;
+    --accent2: #e8c97a;
+    --text: #f0f0f0;
+    --muted: #888;
+    --success: #4caf82;
+    --error: #e05c5c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 20px 48px;
+  }
+
+  header {
+    margin-bottom: 32px;
+    padding-top: 8px;
+  }
+
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  header p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  input[type="text"],
+  input[type="url"],
+  textarea {
+    width: 100%;
+    background: #111;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+
+  input:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea {
+    resize: none;
+    height: 100px;
+    line-height: 1.6;
+  }
+
+  .chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-appearance: none;
+  }
+
+  .chip.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #111;
+    font-weight: 700;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: 14px;
+    color: #111;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+    -webkit-appearance: none;
+  }
+
+  .submit-btn:active {
+    transform: scale(0.98);
+    opacity: 0.85;
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .status {
+    display: none;
+    text-align: center;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 12px;
+  }
+
+  .status.success {
+    display: block;
+    background: rgba(76, 175, 130, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(76, 175, 130, 0.3);
+  }
+
+  .status.error {
+    display: block;
+    background: rgba(224, 92, 92, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(224, 92, 92, 0.3);
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  /* 設定區塊（折疊） */
+  .settings-toggle {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 0;
+  }
+
+  .settings-body {
+    display: none;
+  }
+
+  .settings-body.open {
+    display: block;
+  }
+
+  .settings-body input {
+    font-size: 13px;
+    font-family: monospace;
+  }
+
+  .tip {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 存入知識庫</h1>
+  <p>快速將內容儲存到 Notion</p>
+</header>
+
+<!-- 設定區（第一次使用填入） -->
+<div class="card">
+  <button class="settings-toggle" onclick="toggleSettings()">
+    ⚙️ Notion 設定 <span id="settingsArrow">▶</span>
+  </button>
+  <div class="settings-body" id="settingsBody">
+    <label>Notion Token</label>
+    <input type="text" id="notionToken" placeholder="ntn_xxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" spellcheck="false">
+    <p class="tip">格式：ntn_ 開頭（新版）或 secret_ 開頭（舊版）皆可</p>
+
+    <div style="margin-top:14px"></div>
+
+    <label>Database ID</label>
+    <input type="text" id="databaseId" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" spellcheck="false">
+    <p class="tip">32碼英數字，從 Notion 網址複製</p>
+
+    <div style="margin-top:12px"></div>
+    <button class="submit-btn" style="background:#2e2e2e; color:var(--text); font-size:14px; padding:12px;" onclick="saveSettings()">儲存設定</button>
+  </div>
+</div>
+
+<!-- 主要表單 -->
+<div class="card">
+  <label>標題</label>
+  <input type="text" id="titleInput" placeholder="輸入標題或貼文摘要">
+</div>
+
+<div class="card">
+  <label>網址（選填）</label>
+  <input type="url" id="urlInput" placeholder="https://...">
+</div>
+
+<div class="card">
+  <label>內容摘要（選填）</label>
+  <textarea id="contentInput" placeholder="貼上文字內容或重點..."></textarea>
+</div>
+
+<div class="card">
+  <label>來源類型</label>
+  <div class="chip-group" id="sourceChips">
+    <button class="chip" onclick="selectChip(this, 'source')">網路資料</button>
+    <button class="chip" onclick="selectChip(this, 'source')">靈感隨筆</button>
+    <button class="chip" onclick="selectChip(this, 'source')">對話記錄</button>
+  </div>
+</div>
+
+<div class="card">
+  <label>主題</label>
+  <div class="chip-group" id="topicChips">
+    <button class="chip" onclick="selectChip(this, 'topic')">AI</button>
+    <button class="chip" onclick="selectChip(this, 'topic')">醫學</button>
+    <button class="chip" onclick="selectChip(this, 'topic')">靈感</button>
+  </div>
+</div>
+
+<button class="submit-btn" id="submitBtn" onclick="submitToNotion()">存入知識庫</button>
+
+<div class="status" id="statusMsg"></div>
+
+<script>
+  // 讀取已儲存的設定
+  window.onload = function() {
+    const token = localStorage.getItem('notion_token');
+    const dbId = localStorage.getItem('notion_db_id');
+    if (token) document.getElementById('notionToken').value = token;
+    if (dbId) document.getElementById('databaseId').value = dbId;
+    if (!token || !dbId) toggleSettings(); // 第一次自動展開設定
+  };
+
+  function toggleSettings() {
+    const body = document.getElementById('settingsBody');
+    const arrow = document.getElementById('settingsArrow');
+    body.classList.toggle('open');
+    arrow.textContent = body.classList.contains('open') ? '▼' : '▶';
+  }
+
+  function saveSettings() {
+    const token = document.getElementById('notionToken').value.trim();
+    const dbId = document.getElementById('databaseId').value.trim();
+    if (!token || !dbId) {
+      alert('請填入 Token 和 Database ID');
+      return;
+    }
+    localStorage.setItem('notion_token', token);
+    localStorage.setItem('notion_db_id', dbId);
+    toggleSettings();
+    showStatus('設定已儲存！', 'success');
+  }
+
+  function selectChip(el, group) {
+    const container = group === 'source' ? 'sourceChips' : 'topicChips';
+    document.querySelectorAll(`#${container} .chip`).forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+    setTimeout(() => { el.className = 'status'; }, 3000);
+  }
+
+  async function submitToNotion() {
+    const token = localStorage.getItem('notion_token');
+    const dbId = localStorage.getItem('notion_db_id');
+
+    if (!token || !dbId) {
+      showStatus('請先填寫並儲存 Notion 設定', 'error');
+      toggleSettings();
+      return;
+    }
+
+    const title = document.getElementById('titleInput').value.trim();
+    if (!title) {
+      showStatus('請輸入標題', 'error');
+      return;
+    }
+
+    const url = document.getElementById('urlInput').value.trim();
+    const content = document.getElementById('contentInput').value.trim();
+    const source = document.querySelector('#sourceChips .chip.selected')?.textContent || '';
+    const topic = document.querySelector('#topicChips .chip.selected')?.textContent || '';
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '存入中...';
+
+    const body = {
+      parent: { database_id: dbId },
+      properties: {
+        "名稱": {
+          title: [{ text: { content: title } }]
+        }
+      }
+    };
+
+    if (source) body.properties["來源類型"] = { select: { name: source } };
+    if (topic) body.properties["主題"] = { multi_select: [{ name: topic }] };
+    if (url) body.properties["網址"] = { url: url };
+
+    // 如果有內容，加入頁面內文
+    const children = [];
+    if (content) {
+      children.push({
+        object: "block",
+        type: "paragraph",
+        paragraph: {
+          rich_text: [{ type: "text", text: { content: content } }]
+        }
+      });
+    }
+    if (children.length > 0) body.children = children;
+
+    try {
+      const res = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        showStatus('✅ 成功存入知識庫！', 'success');
+        // 清空表單
+        document.getElementById('titleInput').value = '';
+        document.getElementById('urlInput').value = '';
+        document.getElementById('contentInput').value = '';
+        document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
+      } else {
+        const err = await res.json();
+        showStatus('❌ 失敗：' + (err.message || '請確認設定是否正確'), 'error');
+      }
+    } catch(e) {
+      showStatus('❌ 網路錯誤，請稍後再試', 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '存入知識庫';
+  }
+</script>
+</body>
+</html>
