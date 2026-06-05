@@ -1,1 +1,181 @@
-1
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>存入收件匣</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+  :root {
+    --bg: #0f0f0f; --card: #1a1a1a; --border: #2e2e2e;
+    --accent: #d4a843; --text: #f0f0f0; --muted: #888;
+    --success: #4caf82; --error: #e05c5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 20px 48px; }
+  header { margin-bottom: 28px; padding-top: 8px; }
+  header h1 { font-size: 22px; font-weight: 700; color: var(--accent); }
+  header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+  input[type="text"], textarea { width: 100%; background: #111; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 15px; padding: 12px 14px; outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: none; height: 160px; line-height: 1.6; }
+  .prompt-box { background: #111; border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 14px; font-size: 12px; color: #555; line-height: 1.9; white-space: pre-wrap; font-family: monospace; }
+  .copy-btn { float: right; background: var(--accent); border: none; border-radius: 8px; color: #111; font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 16px; cursor: pointer; margin-top: -4px; }
+  .copy-btn.copied { background: #2a4a2a; color: #5cb85c; }
+  .submit-btn { width: 100%; padding: 16px; background: var(--accent); border: none; border-radius: 14px; color: #111; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity 0.2s, transform 0.1s; -webkit-appearance: none; }
+  .submit-btn:active { transform: scale(0.98); opacity: 0.85; }
+  .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status { display: none; text-align: center; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 500; margin-top: 12px; }
+  .status.success { display: block; background: rgba(76,175,130,0.15); color: var(--success); border: 1px solid rgba(76,175,130,0.3); }
+  .status.error { display: block; background: rgba(224,92,92,0.15); color: var(--error); border: 1px solid rgba(224,92,92,0.3); }
+  .settings-toggle { background: none; border: none; color: var(--muted); font-family: inherit; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: 16px; padding: 0; }
+  .settings-body { display: none; }
+  .settings-body.open { display: block; }
+  .settings-body input { font-size: 13px; font-family: monospace; }
+  .tip { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .step-label { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .step-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📥 存入收件匣</h1>
+  <p>AI 大腦中樞 — 快速記錄對話斷點</p>
+</header>
+
+<!-- 設定 -->
+<div class="card">
+  <button class="settings-toggle" onclick="toggleSettings()">
+    ⚙️ Notion 設定 <span id="settingsArrow">▶</span>
+  </button>
+  <div class="settings-body" id="settingsBody">
+    <label>Notion Token</label>
+    <input type="text" id="notionToken" placeholder="ntn_xxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" spellcheck="false">
+    <p class="tip">格式：ntn_ 開頭</p>
+    <div style="margin-top:12px"></div>
+    <button class="submit-btn" style="background:#2e2e2e; color:var(--text); font-size:14px; padding:12px;" onclick="saveSettings()">儲存設定</button>
+  </div>
+</div>
+
+<!-- 步驟一：複製指令 -->
+<div class="card">
+  <div class="step-label">步驟一</div>
+  <div class="step-title" style="display:flex; justify-content:space-between; align-items:center;">
+    複製指令，貼給 AI
+    <button class="copy-btn" id="copyBtn" onclick="copyPrompt()">複製指令</button>
+  </div>
+  <div class="prompt-box" id="promptText">請用以下格式幫我總結這段對話的斷點：
+
+專案名稱：
+使用AI：
+日期時間：
+
+【目前進度】
+（一到兩句話，做到哪裡了）
+
+【卡住的地方】
+（沒有就填「無」）
+
+【下次第一句話】
+（下次開新對話時直接貼給AI的第一句話）</div>
+</div>
+
+<!-- 步驟二：貼上摘要 -->
+<div class="card">
+  <div class="step-label">步驟二</div>
+  <div class="step-title">貼上 AI 摘要，存入 Notion</div>
+  <textarea id="contentInput" placeholder="把 AI 產出的摘要貼在這裡..."></textarea>
+</div>
+
+<button class="submit-btn" id="submitBtn" onclick="submitToNotion()">存入 AI 收件匣</button>
+<div class="status" id="statusMsg"></div>
+
+<script>
+  const DATABASE_ID = '34dec4023d07805dafb2e594c979946a';
+  const WORKER_URL = 'https://notionfb.nrsabefmusic.workers.dev';
+
+  window.onload = function() {
+    const token = localStorage.getItem('notion_token');
+    if (token) document.getElementById('notionToken').value = token;
+    if (!token) toggleSettings();
+  };
+
+  function toggleSettings() {
+    const body = document.getElementById('settingsBody');
+    const arrow = document.getElementById('settingsArrow');
+    body.classList.toggle('open');
+    arrow.textContent = body.classList.contains('open') ? '▼' : '▶';
+  }
+
+  function saveSettings() {
+    const token = document.getElementById('notionToken').value.trim();
+    if (!token) { alert('請填入 Token'); return; }
+    localStorage.setItem('notion_token', token);
+    toggleSettings();
+    showStatus('設定已儲存！', 'success');
+  }
+
+  function copyPrompt() {
+    const text = document.getElementById('promptText').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ 已複製';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = '複製指令'; btn.classList.remove('copied'); }, 2500);
+    });
+  }
+
+  function showStatus(msg, type) {
+    const el = document.getElementById('statusMsg');
+    el.textContent = msg;
+    el.className = 'status ' + type;
+    setTimeout(() => { el.className = 'status'; }, 3500);
+  }
+
+  async function submitToNotion() {
+    const token = localStorage.getItem('notion_token');
+    if (!token) { showStatus('請先填寫並儲存 Notion 設定', 'error'); toggleSettings(); return; }
+
+    const content = document.getElementById('contentInput').value.trim();
+    if (!content) { showStatus('請貼上 AI 摘要', 'error'); return; }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '存入中...';
+
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: token,
+          database_id: DATABASE_ID,
+          title: content.substring(0, 200),
+          source: '對話記錄',
+          status: '待整理',
+          content: content
+        })
+      });
+
+      if (res.ok) {
+        showStatus('✅ 成功存入收件匣！', 'success');
+        document.getElementById('contentInput').value = '';
+      } else {
+        const err = await res.json();
+        showStatus('❌ 失敗：' + (err.message || '請確認設定是否正確'), 'error');
+      }
+    } catch(e) {
+      showStatus('❌ 網路錯誤，請稍後再試', 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '存入 AI 收件匣';
+  }
+</script>
+</body>
+</html>
