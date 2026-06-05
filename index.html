@@ -175,7 +175,6 @@
     margin: 16px 0;
   }
 
-  /* 設定區塊（折疊） */
   .settings-toggle {
     background: none;
     border: none;
@@ -218,7 +217,6 @@
   <p>快速將內容儲存到 Notion</p>
 </header>
 
-<!-- 設定區（第一次使用填入） -->
 <div class="card">
   <button class="settings-toggle" onclick="toggleSettings()">
     ⚙️ Notion 設定 <span id="settingsArrow">▶</span>
@@ -227,19 +225,15 @@
     <label>Notion Token</label>
     <input type="text" id="notionToken" placeholder="ntn_xxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" spellcheck="false">
     <p class="tip">格式：ntn_ 開頭（新版）或 secret_ 開頭（舊版）皆可</p>
-
     <div style="margin-top:14px"></div>
-
     <label>Database ID</label>
     <input type="text" id="databaseId" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" spellcheck="false">
     <p class="tip">32碼英數字，從 Notion 網址複製</p>
-
     <div style="margin-top:12px"></div>
     <button class="submit-btn" style="background:#2e2e2e; color:var(--text); font-size:14px; padding:12px;" onclick="saveSettings()">儲存設定</button>
   </div>
 </div>
 
-<!-- 主要表單 -->
 <div class="card">
   <label>標題</label>
   <input type="text" id="titleInput" placeholder="輸入標題或貼文摘要">
@@ -278,13 +272,19 @@
 <div class="status" id="statusMsg"></div>
 
 <script>
-  // 讀取已儲存的設定
   window.onload = function() {
     const token = localStorage.getItem('notion_token');
     const dbId = localStorage.getItem('notion_db_id');
     if (token) document.getElementById('notionToken').value = token;
     if (dbId) document.getElementById('databaseId').value = dbId;
-    if (!token || !dbId) toggleSettings(); // 第一次自動展開設定
+    if (!token || !dbId) toggleSettings();
+
+    // 從捷徑帶入的網址參數自動填入網址欄
+    const params = new URLSearchParams(window.location.search);
+    const sharedUrl = params.get('url');
+    if (sharedUrl) {
+      document.getElementById('urlInput').value = sharedUrl;
+    }
   };
 
   function toggleSettings() {
@@ -345,38 +345,10 @@
     btn.disabled = true;
     btn.textContent = '存入中...';
 
-    const body = {
-      parent: { database_id: dbId },
-      properties: {
-        "名稱": {
-          title: [{ text: { content: title } }]
-        }
-      }
-    };
-
-    if (source) body.properties["來源類型"] = { select: { name: source } };
-    if (topic) body.properties["主題"] = { multi_select: [{ name: topic }] };
-    if (url) body.properties["網址"] = { url: url };
-
-    // 如果有內容，加入頁面內文
-    const children = [];
-    if (content) {
-      children.push({
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [{ type: "text", text: { content: content } }]
-        }
-      });
-    }
-    if (children.length > 0) body.children = children;
-
     try {
       const res = await fetch('https://notionfb.nrsabefmusic.workers.dev', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: token,
           database_id: dbId,
@@ -390,7 +362,6 @@
 
       if (res.ok) {
         showStatus('✅ 成功存入知識庫！', 'success');
-        // 清空表單
         document.getElementById('titleInput').value = '';
         document.getElementById('urlInput').value = '';
         document.getElementById('contentInput').value = '';
